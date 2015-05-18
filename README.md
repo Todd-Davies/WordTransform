@@ -8,4 +8,4 @@ that even make sense?).
 
 To run, try something like:
   
-  ./run head feet
+  ./run.sh head feet
