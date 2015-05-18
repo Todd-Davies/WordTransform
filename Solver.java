@@ -8,16 +8,17 @@ import java.io.IOException;
 
 public class Solver {
 
-  // A comperator to order words by distance from the desired word
-  private final Comparator<WordTree> comp;
-  // Keep track of the start and finish words
-  private final String targetWord, startWord;
+  // Keep track of the start word
+  private final String startWord;
+  // The dictionary of words
   private final HashSet<String> dict;
+  // The root of the word tree
+  private final WordTree root;
 
   /**
    * Constructs a new Solver object, mainly just reads in the dictionary.
    */
-  public Solver(String filename, String start, final String end)
+  public Solver(String filename, String start)
       throws IOException {
     dict = new HashSet<String>();
     // Read in the dictionary
@@ -27,24 +28,39 @@ public class Solver {
         dict.add(word = br.readLine());
       } while(word != null);
     }
+    if(!dict.contains(start)) {
+      throw new RuntimeException("Start word not in dictionary!");
+    }
     // Set the final variables
     startWord = start;
-    targetWord = end;
-    // Create the comperator
-    comp = new Comparator<WordTree>() {
+    // Create the initial tree
+    root = new WordTree(startWord, dict);
+  }
+
+  /**
+   * Runs the pathfinding heuristic
+   * @return A LinkedList of String if a path was found, null if not
+   */
+  public LinkedList<String> solve(final String targetWord) {
+    if(!dict.contains(targetWord)) {
+      throw new RuntimeException("Target word " + targetWord +
+                                 " not in dictionary!");
+    }
+    // Create the comperator for this run
+    Comparator<WordTree> comperator = new Comparator<WordTree>() {
       public int compare(WordTree w1, WordTree w2) {
         return distance(w1.value, targetWord) - distance(w2.value, targetWord);
       }
     };
-  }
-
-  public LinkedList<String> solve() {
-    WordTree tree = new WordTree(startWord, dict);
-    LinkedList<WordTree> answer = solve(new LinkedList<WordTree>(), tree,
-                                        targetWord);
+    // Create a LinkedList for the answer
+    LinkedList<WordTree> answer = new LinkedList<WordTree>();
+    // Run the algorithm
+    answer = solve(answer, root, targetWord, comperator);
     if(answer == null) {
+      // If the answer wasn't found, return null
       return null;
     } else {
+      // Otherwise, convert the list to a String and return that
       LinkedList<String> out = new LinkedList<String>();
       while(!answer.isEmpty()) out.push(answer.pop().value);
       return out;
@@ -57,7 +73,7 @@ public class Solver {
    * of one character of the current word.
    */
   private LinkedList<WordTree> solve(LinkedList<WordTree> result, WordTree tree,
-      String word) {
+      String word, Comparator<WordTree> comperator) {
     // Add this word
     result.push(tree);
     // If we're at the destination, return the result
@@ -65,17 +81,18 @@ public class Solver {
     else {
       // Otherwise, get the children for the tree
       LinkedList<WordTree> children = tree.getChildren();
-      // If there are children
+      // If there are children (if there aren't, we've run out of words)
       if(children != null && children.size() > 0) {
         // Create a priority queue for them
         PriorityQueue<WordTree> childQueue =
-          new PriorityQueue<WordTree>(children.size(), comp);
+          new PriorityQueue<WordTree>(children.size(), comperator);
         // Add each child
         for(WordTree child : children) childQueue.add(child);
         // While we've got words in the queue
         while(!childQueue.isEmpty()) {
           // Try and solve using the next word in the queue as the next step
-          LinkedList<WordTree> answer = solve(result, childQueue.poll(), word);
+          LinkedList<WordTree> answer = solve(result, childQueue.poll(), word,
+                                              comperator);
           // If the answer was not null, return it
           if(answer != null) return answer;
         }
@@ -99,12 +116,14 @@ public class Solver {
   }
 
   public static void main(String[] args) throws IOException {
-    Solver solver = new Solver(args[0], args[1], args[2]);
-    LinkedList<String> answer = solver.solve();
-    if(answer != null) {
-      for(String word : answer) System.out.println(word);
-    } else {
-      System.out.println("No solution!");
+    Solver solver = new Solver(args[0], args[1]);
+    for(int i = 2; i < args.length; i++) {
+      LinkedList<String> answer = solver.solve(args[i]);
+      if(answer != null) {
+        for(String word : answer) System.out.println(word);
+      } else {
+        System.out.println("No solution!");
+      }
     }
   }
 
