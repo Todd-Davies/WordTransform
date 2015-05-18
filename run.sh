@@ -1,1 +1,1 @@
-java Solver dict $1 $2
+java Solver dict "$@"
